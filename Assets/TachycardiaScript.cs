@@ -25,7 +25,7 @@ public class TachycardiaScript : MonoBehaviour
     private float _lastHeld = -1f;
     private static int _idc, _strikesToIgnore = 0;
     private int _id = ++_idc, _strikes = 0;
-    private float _nextAttack = 90f;
+    private float _nextAttack;
     private Action _onStrike = () => { };
 
     private void Start()
@@ -43,11 +43,12 @@ public class TachycardiaScript : MonoBehaviour
 
     private IEnumerator SendEnemies()
     {
+        _nextAttack = 90f * UnityEngine.Random.Range(0.8f, 1.2f);
         yield return new WaitForSeconds(_nextAttack);
         while(!_isSolved)
         {
             _routine = StartCoroutine(MoveEnemy());
-            _nextAttack = UnityEngine.Random.Range(8f, 12f) * _info.GetTime() / 60f;
+            _nextAttack = Mathf.Max(7f, UnityEngine.Random.Range(8f, 12f) * _info.GetTime() / 60f);
             yield return new WaitForSeconds(_nextAttack);
         }
     }
@@ -59,10 +60,12 @@ public class TachycardiaScript : MonoBehaviour
         _strikes = _info.GetStrikes();
     }
 
-    private IEnumerator WaitShortly()
+    private IEnumerator WaitShortly(int count)
     {
-        _strikesToIgnore = 1;
         yield return null;
+        _strikesToIgnore = 1;
+        for(int i = 0; i < count; i++)
+            _module.HandleStrike();
         yield return null;
         _strikesToIgnore = 0;
     }
@@ -79,12 +82,7 @@ public class TachycardiaScript : MonoBehaviour
             _audio.PlaySoundAtTransform("HeartBeat", _heart.transform);
             _isSolved = true;
             _nextAttack = float.PositiveInfinity;
-            _onStrike += () =>
-            {
-                StartCoroutine(WaitShortly());
-                _module.HandleStrike();
-                _module.HandleStrike();
-            };
+            _onStrike += () => StartCoroutine(WaitShortly(2));
 
             _defib = false;
             if(_routine != null)
@@ -109,7 +107,6 @@ public class TachycardiaScript : MonoBehaviour
 
         if(!_defib)
         {
-            StartCoroutine(WaitShortly());
             _module.HandleStrike();
             return false;
         }
@@ -151,7 +148,6 @@ public class TachycardiaScript : MonoBehaviour
         _enemy.gameObject.SetActive(false);
         if(_defib)
         {
-            StartCoroutine(WaitShortly());
             _module.HandleStrike();
             _defib = false;
         }
